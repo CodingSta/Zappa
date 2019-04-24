@@ -687,7 +687,26 @@ class ZappaCLI(object):
 
         """
 
-        if not source_zip:
+        if source_zip:
+            # Make sure this isn't already deployed.
+            deployed_versions = self.zappa.get_lambda_function_versions(self.lambda_name)
+            if len(deployed_versions) > 0:
+                raise ClickException("This application is " + click.style("already deployed", fg="red") +
+                                     " - did you mean to call " + click.style("update", bold=True) + "?")
+
+            # Make sure the necessary IAM execution roles are available
+            if self.manage_roles:
+                try:
+                    self.zappa.create_iam_roles()
+                except botocore.client.ClientError:
+                    raise ClickException(
+                        click.style("Failed", fg="red") + " to " + click.style("manage IAM roles", bold=True) + "!\n" +
+                        "You may " + click.style("lack the necessary AWS permissions", bold=True) +
+                        " to automatically manage a Zappa execution role.\n" +
+                        "To fix this, see here: " +
+                        click.style("https://github.com/Miserlou/Zappa#custom-aws-iam-roles-and-policies-for-deployment", bold=True)
+                        + '\n')
+        else:
             # Make sure we're in a venv.
             self.check_venv()
 
@@ -858,7 +877,20 @@ class ZappaCLI(object):
         Repackage and update the function code.
         """
 
-        if not source_zip:
+        if source_zip:
+            # Make sure the necessary IAM execution roles are available
+            if self.manage_roles:
+                try:
+                    self.zappa.create_iam_roles()
+                except botocore.client.ClientError:
+                    click.echo(click.style("Failed", fg="red") + " to " + click.style("manage IAM roles", bold=True) + "!")
+                    click.echo("You may " + click.style("lack the necessary AWS permissions", bold=True) +
+                               " to automatically manage a Zappa execution role.")
+                    click.echo("To fix this, see here: " +
+                               click.style("https://github.com/Miserlou/Zappa#custom-aws-iam-roles-and-policies-for-deployment",
+                                           bold=True))
+                    sys.exit(-1)
+        else:
             # Make sure we're in a venv.
             self.check_venv()
 
